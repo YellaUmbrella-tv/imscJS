@@ -68,7 +68,27 @@ module.exports = function (grunt) {
                         standalone: 'imsc'
                     }
                 }
+            },
+            {
+                src: "<%= pkg.workerworker %>",
+                dest: "<%= properties.umdBuildDir %>/<%= properties.umdDebugWorkerWorkerName %>",
+                options: {
+                    browserifyOptions: {
+                        standalone: 'imsc'
+                    }
+                }
+            },
+            {
+                src: "<%= pkg.workermain %>",
+                dest: "<%= properties.umdBuildDir %>/<%= properties.umdDebugWorkerMainName %>",
+                options: {
+                    browserifyOptions: {
+                        standalone: 'imsc'
+                    }
+                }
             }
+           
+            
         ],
 
         jshint: {

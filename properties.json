@@ -7,5 +7,7 @@
     "umdAllDebugName" : "imsc.all.debug.js",
     "umdDebugName" : "imsc.debug.js",
     "umdAllMinName" : "imsc.all.min.js",
-    "umdMinName" : "imsc.min.js"
+    "umdMinName" : "imsc.min.js",
+    "umdDebugWorkerWorkerName" : "imsc.debug.workerworker.js",
+    "umdDebugWorkerMainName" : "imsc.debug.workermain.js"
 }
