@@ -349,6 +349,17 @@
         return this.rw === 0 && this.rh === 0;
     };
 
+    /* for use where we no olnger have a class - e.g. after attributes are sent from
+      webworker */
+    imscUtils.toUsedLength = function (item, width, height) {
+        return width * item.rw + height * item.rh;
+    };
+    
+    imscUtils.isZero = function (item) {
+        return item.rw === 0 && item.rh === 0;
+    };
+
+    
     /**
      * Computes a specified length to a root container relative length
      * 

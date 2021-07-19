@@ -29,8 +29,7 @@
  */
 
 ;
-(function (imscHTML, imscNames, imscStyles) {
-
+(function (imscHTML, imscNames, imscStyles, imscUtils) {
     /**
      * Function that maps <pre>smpte:background</pre> URIs to URLs resolving to image resource
      * @callback IMGResolver
@@ -321,9 +320,9 @@
 
         var lp = isd_element.styleAttrs[imscStyles.byName.linePadding.qname];
 
-        if (lp && (! lp.isZero())) {
+        if (lp && (! imscUtils.isZero(lp))) {
 
-            var plength = lp.toUsedLength(context.w, context.h);
+            var plength = imscUtils.toUsedLength(lp, context.w, context.h);
 
 
             if (plength > 0) {
@@ -517,7 +516,7 @@
 
             if (context.lp) {
 
-                applyLinePadding(linelist, context.lp.toUsedLength(context.w, context.h), context);
+                applyLinePadding(linelist, imscUtils.toUsedLength(context.lp, context.w, context.h), context);
 
                 context.lp = null;
 
@@ -884,7 +883,7 @@
             var rt1;
             var rt2;
 
-            var fs = context.rubyReserve[1].toUsedLength(context.w, context.h) + "px";
+            var fs = imscUtils.toUsedLength(context.rubyReserve[1], context.w, context.h) + "px";
 
             if (context.rubyReserve[0] === "both" || (context.rubyReserve[0] === "outside" && lineList.length == 1)) {
 
@@ -1352,8 +1351,8 @@
                 function (context, dom_element, isd_element, attr) {
                     /* TODO: this is super ugly */
 
-                    context.regionH = attr.h.toUsedLength(context.w, context.h);
-                    context.regionW = attr.w.toUsedLength(context.w, context.h);
+                    context.regionH = imscUtils.toUsedLength(attr.h, context.w, context.h);
+                    context.regionW = imscUtils.toUsedLength(attr.w, context.w, context.h);
 
                     /* 
                      * CSS height/width are measured against the content rectangle,
@@ -1371,8 +1370,8 @@
 
                     } else {
 
-                        hdelta = p[0].toUsedLength(context.w, context.h) + p[2].toUsedLength(context.w, context.h);
-                        wdelta = p[1].toUsedLength(context.w, context.h) + p[3].toUsedLength(context.w, context.h);
+                        hdelta = imscUtils.toUsedLength(p[0], context.w, context.h) + imscUtils.toUsedLength(p[2], context.w, context.h);
+                        wdelta = imscUtils.toUsedLength(p[1], context.w, context.h) + imscUtils.toUsedLength(p[3], context.w, context.h);
 
                     }
 
@@ -1484,7 +1483,7 @@
         new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling fontSize",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.fontSize = attr.toUsedLength(context.w, context.h) + "px";
+                    dom_element.style.fontSize = imscUtils.toUsedLength(attr, context.w, context.h) + "px";
                 }
         ),
 
@@ -1509,7 +1508,7 @@
 
                     } else {
 
-                        dom_element.style.lineHeight = attr.toUsedLength(context.w, context.h) + "px";
+                        dom_element.style.lineHeight = imscUtils.toUsedLength(attr, context.w, context.h) + "px";
                     }
                 }
         ),
@@ -1522,8 +1521,8 @@
         new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling origin",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.top = attr.h.toUsedLength(context.w, context.h) + "px";
-                    dom_element.style.left = attr.w.toUsedLength(context.w, context.h) + "px";
+                    dom_element.style.top = imscUtils.toUsedLength(attr.h, context.w, context.h) + "px";
+                    dom_element.style.left = imscUtils.toUsedLength(attr.w, context.w, context.h) + "px";
                 }
         ),
         new HTMLStylingMapDefinition(
@@ -1542,10 +1541,10 @@
 
                     var rslt = [];
 
-                    rslt[0] = attr[0].toUsedLength(context.w, context.h) + "px";
-                    rslt[1] = attr[3].toUsedLength(context.w, context.h) + "px";
-                    rslt[2] = attr[2].toUsedLength(context.w, context.h) + "px";
-                    rslt[3] = attr[1].toUsedLength(context.w, context.h) + "px";
+                    rslt[0] = imscUtils.toUsedLength(attr[0], context.w, context.h) + "px";
+                    rslt[1] = imscUtils.toUsedLength(attr[3], context.w, context.h) + "px";
+                    rslt[2] = imscUtils.toUsedLength(attr[2], context.w, context.h) + "px";
+                    rslt[3] = imscUtils.toUsedLength(attr[1], context.w, context.h) + "px";
 
                     dom_element.style.padding = rslt.join(" ");
                 }
@@ -1553,8 +1552,8 @@
         new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling position",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.top = attr.h.toUsedLength(context.w, context.h) + "px";
-                    dom_element.style.left = attr.w.toUsedLength(context.w, context.h) + "px";
+                    dom_element.style.top = imscUtils.toUsedLength(attr.h, context.w, context.h) + "px";
+                    dom_element.style.left = imscUtils.toUsedLength(attr.w, context.w, context.h) + "px";
                 }
         ),
         new HTMLStylingMapDefinition(
@@ -1686,9 +1685,9 @@
                             for (var i = 0; i < attr.length; i++) {
 
 
-                                s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
-                                        attr[i].y_off.toUsedLength(context.w, context.h) + "px " +
-                                        attr[i].b_radius.toUsedLength(context.w, context.h) + "px " +
+                                s.push(imscUtils.toUsedLength(attr[i].x_off, context.w, context.h) + "px " +
+                                        imscUtils.toUsedLength(attr[i].y_off, context.w, context.h) + "px " +
+                                        imscUtils.toUsedLength(attr[i].b_radius, context.w, context.h) + "px " +
                                         "rgba(" +
                                         attr[i].color[0].toString() + "," +
                                         attr[i].color[1].toString() + "," +
