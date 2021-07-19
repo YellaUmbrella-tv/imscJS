@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en-us">
+    <head>
+        <meta charset="utf-8">
+        <title>IMSC1.1 Renderer using webworkers</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+        <link rel="stylesheet" href="css/gen-renders.css">
+        <script src="../../../dist/imsc.debug.workermain.js"></script>
+
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.1/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+    </head>
+    <body>
+        <!--[if lt IE 9]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <div id="main">
+
+            <section id="intro">
+                <h2>IMSC1 Renderer using webworkers</h2>
+            </section>
+
+            <section id="visual">
+                <div style="display :flex; justify-content : center; align-items : center; height : 450px ; width: 800px; overflow: hidden" id="render-div"></div>
+                <div>
+                    <label for="position-id">Position (x, y):</label>
+                    <input type="text" id="position-id" readonly style="border:0;">
+                    <label for="dimensions-input-id">Container dimensions:</label>
+                    <select id="dimensions-input-id" name="dimensions" style="border:0;">
+                        <option value="480p">640x480</option>
+                        <option value="720p">1280x720</option>
+                        <option value="1080p" selected>1920x1080</option>
+                        <option value="2160p">3840x2160</option>
+                    </select>
+                    <label for="forced-display">displayForcedOnlyMode:</label>
+                    <input type="checkbox" id="forced-display" value="forced-display" style="border:0;">
+                </div>
+                <div style="text-align: left;">
+                    <label for="media-time">Media time (in seconds):</label>
+                    <input type="text" id="media-time" readonly style="border:0; color:#f6931f; font-weight:bold;">
+                    <div id="slider"></div>
+                </div>
+                <div id="save-as" style="margin-top:20px"><button onclick="saveAsPNG()">Save as PNG sequence</button></div>
+                <div id="errors" style="margin-top:20px"></div>
+            </section>
+
+            <script>
+              document.imscWorker = new Worker('../../../dist/imsc.debug.workerworker.js');
+      
+              $("#slider").slider({
+                  disabled: true,
+                  slide: function (event, ui) {
+                      updateISD(timesList[ui.value]);
+                  }
+              });
+
+              $("#forced-display")[0].addEventListener('click',
+                      function (e) {
+                          if (typeof timesList !== 'undefined')
+                              updateISD(timesList[$("#slider").slider("value")]);
+                      },
+                      false
+                      );
+
+              var timesList = [];
+              var regionBufferOut;
+              var regionBufferIn;
+              
+              function updateISD(t){
+                  document.imscWorker.postMessage({ cmd:'isd', time: t, tag: window.imscTag });
+              }
+              
+              function getRDivDimensions() {
+                  var height, width;
+                  switch ($("#dimensions-input-id").val()) {
+                      case "480p":
+                          height = 480;
+                          width = 640;
+                          break;
+                      case "720p":
+                          height = 720;
+                          width = 1280;
+                          break;
+                      default:
+                      case "1080p":
+                          height = 1080;
+                          width = 1920;
+                          break;
+                      case "2160p":
+                          height = 2160;
+                          width = 3840;
+                          break;
+
+                  }
+                  return {'h': height, 'w': width};
+              }
+              
+              document.imscWorker.onmessage = function(oEvent) {
+              
+                if (oEvent.data.error) {
+                  console.error('imsc worker has error: '+oEvent.data.error, oEvent.data);
+                  return;
+                }
+              
+                switch (event.data.cmd){
+                  default:{
+                    console.error('imsc - unrecognised commmand from worker', oEvent.data);
+                  } break;
+                
+                  case 'error':{ // only unrecognised commmand for the moment
+                    console.error('imsc worker has error: '+oEvent.data.error, oEvent.data);
+                  } break;
+                
+                  case 'parsed':{
+                    // the worker completed a parse of an IMSC file
+                    // it gives us back a list of the times of all events in the ttml.
+                    timesList = event.data.times;
+                    let tagrecv = event.data.tag; // - the tag we asked for.
+
+                    $("#slider").slider("option", "min", 0);
+                    $("#slider").slider("option", "max", timesList.length - 1);
+                    $("#slider").slider("value", 0);
+                    
+                    // as a test, request the first displayable item (assuming the FIRST item is an empty render).
+                    document.imscWorker.postMessage({ cmd:'isd', time: timesList[1], tag: window.imscTag });
+
+                    $("#slider").slider("enable");
+                    
+                    $("#slider .ui-slider-handle").focus();
+                  } break;
+                  
+                  case 'isd':{
+                    // the worker completed extraction of an ISD
+                    // we can now render it.
+                    var rdiv = $("#render-div");
+                    rdiv.empty();
+                    var dims = getRDivDimensions();
+                    rdiv.width(Math.round(rdiv.height() * dims.w / dims.h));
+                    
+                    let isd = oEvent.data.isd;
+                    // this is the time we requested...
+                    let time =  oEvent.data.time;
+                    
+                    regionBufferOut = imsc.renderHTML(
+                      isd,
+                      rdiv.get(0),
+                      function (uri) {
+                          return uri;
+                      },
+                      null, /*eheight*/
+                      null, /*ewidth*/
+                      $("#forced-display")[0].checked, /*displayForcedOnlyMode*/
+                      null /*errorHandler*/,
+                      regionBufferOut,
+                      true /* enable roll-up */
+                      );
+                     
+                    regionBufferIn = regionBufferOut;
+                      
+                  } break;
+                }
+              };
+            
+              var folder = '../resources/imsc-tests/imsc1_1/ttml/position/';
+              var file = 'position001.ttml';
+
+              // tag should just be something unique for this file?
+              var tag = file;
+              window.imscTag = tag;
+
+              fetch(folder + file)
+              .then((resp)=>{return resp.text()})
+              .then((contents)=>{
+                // post a message containing the text from the IMSC file.
+                // this is parsed and the imscDoc stored inside the worker.
+                // the imscDoc is stored against 'tag', so you can load multiple.
+                document.imscWorker.postMessage({ 
+                  cmd:'parse', 
+                  filetext:contents, 
+                  tag: tag 
+                });
+              });
+            </script>
+        </div>
+    </body>
+</html>
