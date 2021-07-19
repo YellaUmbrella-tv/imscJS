@@ -31,17 +31,53 @@ exports.fromXML = require('./doc').fromXML;
 self.currentDocs = {};
 
 onmessage = function(oEvent) {
+  var error; //===undefined
   switch(oEvent.data.cmd){
     case 'parse':{
-      self.currentDocs[oEvent.data.tag] = imsc.fromXML(oEvent.data.filetext);
-      postMessage({cmd:'parsed', times:self.currentDocs[oEvent.data.tag].getMediaTimeEvents(), tag:oEvent.data.tag});
+      var doc;
+      if (oEvent.data.tag){
+        try{
+          doc = self.currentDocs[oEvent.data.tag] = imsc.fromXML(oEvent.data.filetext);
+        } catch (e) {
+          error = e.toString();
+        }
+      } else {
+        error = 'imsc worker parse needs a tag';
+      }
+      postMessage({
+        cmd:'parsed', 
+        times:doc?doc.getMediaTimeEvents():[], 
+        tag:oEvent.data.tag, 
+        error:error
+      });
     } break;
+    
     case 'isd':{
-      var isd = imsc.generateISD(self.currentDocs[oEvent.data.tag], oEvent.data.time);
-      postMessage({cmd:'isd', tag:oEvent.data.tag, time: oEvent.data.time, isd:isd});
+      var isd;
+      if (oEvent.data.tag && self.currentDocs[oEvent.data.tag]){
+        try {
+          isd = imsc.generateISD(self.currentDocs[oEvent.data.tag], oEvent.data.time);
+        } catch(e){
+          error = e.toString();
+        }
+      } else {
+        error = 'unknown tag '+oEvent.data.tag;
+      }
+      postMessage({cmd:'isd', tag:oEvent.data.tag, time: oEvent.data.time, isd:isd, error: error});
     } break;
+    
     case 'releasetag':{
-      delete self.currentDocs[oEvent.data.tag];
+      if (oEvent.data.tag && self.currentDocs[oEvent.data.tag]){
+        delete self.currentDocs[oEvent.data.tag];
+      } else {
+        error = 'unknown tag '+oEvent.data.tag;
+      }
+      postMessage({cmd:'releasetag', tag:oEvent.data.tag, error:error});
+    } break;
+    
+    default:{
+      error = 'imsc worker: unknown cmd:'+oEvent.data.cmd;
+      postMessage({cmd:'error', tag:oEvent.data.tag, error:error});
     } break;
   }
 };
