@@ -783,6 +783,13 @@
 
             this.space = ttelem.space;
         }
+        
+        if ('comment' in ttelem) {
+            if (ttelem.comment){
+                this.comment = ttelem.comment;
+            }
+        }
+        
     }
 
 
