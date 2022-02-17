@@ -81,8 +81,22 @@
         var metadata_depth = 0;
         var doc = null;
 
+        var lastEl = null;
+
+        p.oncomment = function (text) {
+            if (lastEl){
+                lastEl.comment = text;
+                //console.log('comment after '+lastEl.constructor.name, text);
+            } else {
+                //console.log('comment not after P or DIV', text);
+            }
+        };
+        
+        
         p.onclosetag = function (node) {
 
+            /* note the last element processed */
+            lastEl = estack[0];
             
             if (estack[0] instanceof Region) {
 
@@ -227,6 +241,9 @@
 
 
         p.onopentag = function (node) {
+
+            /* clear records of last element processed */
+            lastEl = null;
 
             // maintain the xml:space stack
 
