@@ -580,6 +580,7 @@
         if ((isd_element.kind === 'div' && imscStyles.byName.backgroundImage.qname in isd_element.styleAttrs) ||
             isd_element.kind === 'br' ||
             isd_element.kind === 'image' ||
+            isd_element.comment ||
             ('contents' in isd_element && isd_element.contents.length > 0) ||
             (isd_element.kind === 'span' && isd_element.text !== null) ||
             (isd_element.kind === 'region' &&
