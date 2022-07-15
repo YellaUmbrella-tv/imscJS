@@ -401,6 +401,7 @@
 
                 /* ignore tate-chu-yoku since line break cannot happen within */
                 e.textContent = isd_element.text;
+                e._isd_element = isd_element;
 
                 if (te) {
 
@@ -684,6 +685,7 @@
 
         if (first.tagName === "SPAN" &&
             second.tagName === "SPAN" &&
+            first._isd_element &&
             first._isd_element === second._isd_element) {
 
                 first.textContent += second.textContent;
