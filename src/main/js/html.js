@@ -920,21 +920,14 @@
     function applyRubyReserve(lineList, context) {
         console.log(lineList);
         for (var i = 0; i < lineList.length; i++) {
-            var ruby = context.document.createElement("ruby");
+            var rubyover = document.createElement("ruby");
 
-            var rb = context.document.createElement("rb");
-            rb.textContent = "\u200B";
-
-            ruby.appendChild(rb);
-
-            var rt1;
-            var rt2;
             var fs = context.rubyReserve[1].toUsedLength(context.w, context.h) + "px";
 
             var rb = document.createElement("rb");
             rb.textContent = "ん";
             rb.style.marginInlineStart = '-10em';
-            var rt = document.createElement("rt");
+            var rt = context.document.createElement("rt");
             /* note: the text content matters from a size perspective */
             rt.textContent = "ん";
             rt.style.fontSize = fs;
@@ -957,27 +950,9 @@
             }
 
             if (context.rubyReserve[0] === "both" || (context.rubyReserve[0] === "outside" && lineList.length == 1)) {
-                rt1 = context.document.createElement("rtc");
-                rt1.style[RUBYPOSITION_PROP] = RUBYPOSITION_ISWK ? "after" : "under";
-                rt1.textContent = "\u200B";
-                rt1.style.fontSize = fs;
-
-                rt2 = context.document.createElement("rtc");
-                rt2.style[RUBYPOSITION_PROP] = RUBYPOSITION_ISWK ? "before" : "over";
-                rt2.textContent = "\u200B";
-                rt2.style.fontSize = fs;
-
-                ruby.appendChild(rt1);
-                ruby.appendChild(rt2);
-
+                target.parentElement.insertBefore(rubyover, target);
+                target.parentElement.insertBefore(rubyunder, target);              
             } else {
-
-                rt1 = context.document.createElement("rtc");
-                rt1.textContent = "\u200B";
-                rt1.style.fontSize = fs;
-
-                var pos;
-
                 if (context.rubyReserve[0] === "after" || (context.rubyReserve[0] === "outside" && i > 0)) {
                   target.parentElement.insertBefore(rubyunder, target);
                 } else {
@@ -1861,7 +1836,7 @@
     var TEXTEMPHASISPOSITION_PROP = "textEmphasisPosition";
 
     try {
-      var RUBYPOSITION_ISWK = false; //"webkitRubyPosition" in window.getComputedStyle(document.documentElement);
+      RUBYPOSITION_ISWK = false; //"webkitRubyPosition" in window.getComputedStyle(document.documentElement);
 
       RUBYPOSITION_PROP = RUBYPOSITION_ISWK ? "webkitRubyPosition" : "rubyPosition";
 
