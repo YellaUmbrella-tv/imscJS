@@ -1165,7 +1165,6 @@
             }
 
         } else {
-
             var child = element.firstChild;
 
             while (child) {
@@ -1305,7 +1304,11 @@
         ),
         new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling display",
-                function (context, dom_element, isd_element, attr) {}
+                function (context, dom_element, isd_element, attr) {
+                  if (attr === 'inlineBlock'){
+                    dom_element.style.display = 'inline-block';
+                  }
+                }
         ),
         new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling displayAlign",
