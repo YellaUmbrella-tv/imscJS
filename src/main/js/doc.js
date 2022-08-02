@@ -81,8 +81,22 @@
         var metadata_depth = 0;
         var doc = null;
 
+        var lastEl = null;
+
+        p.oncomment = function (text) {
+            if (lastEl){
+                lastEl.comment = text;
+                //console.log('comment after '+lastEl.constructor.name, text);
+            } else {
+                //console.log('comment not after P or DIV', text);
+            }
+        };
+        
+        
         p.onclosetag = function (node) {
 
+            /* note the last element processed */
+            lastEl = estack[0];
             
             if (estack[0] instanceof Region) {
 
@@ -227,6 +241,9 @@
 
 
         p.onopentag = function (node) {
+
+            /* clear records of last element processed */
+            lastEl = null;
 
             // maintain the xml:space stack
 
@@ -847,7 +864,8 @@
 
         var attr = findAttribute(node, imscNames.ns_ttp, "timeBase");
 
-        if (attr !== null && attr !== "media") {
+		// allow smpte as well...
+        if (attr !== null && attr !== "media" && attr !== "smpte") {
 
             reportFatal(errorHandler, "Unsupported time base");
 
@@ -1563,7 +1581,45 @@
 
         }
 
-        return {effectiveFrameRate: efps, tickRate: tr};
+
+        var attr = findAttribute(node, imscNames.ns_ttp, "timeBase");
+
+		var dropMode = null;
+        if (attr === "smpte") {
+			// default to set dropMode to control TC extract.
+			dropMode = 'nonDrop';
+		}
+
+        var drattr = findAttribute(node, imscNames.ns_ttp, "dropMode");
+
+		// allow smpte as well...
+        if (drattr !== null && drattr !== "nonDrop" && drattr !== "dropNTSC" && drattr !== "dropPAL") {
+            reportFatal(errorHandler, "Unsupported time dropMode "+drattr);
+        }
+		if (drattr !== null){
+			dropMode = drattr;
+		}
+		
+		
+		var dropFrames = 0;
+		switch(dropMode){
+			default:
+				dropFrames = 0;
+				break;
+			case 'dropNTSC':
+				if (Math.round(efps) !== 30){
+		            reportError(errorHandler, "Incompatible dropMode ("+dropMode+") and FPS ("+efps+")");
+				}
+				break;
+			case 'dropPAL':
+				if (Math.round(efps) !== 25){
+		            reportError(errorHandler, "Incompatible dropMode ("+dropMode+") and FPS ("+efps+")");
+				}
+				break;
+		}
+
+
+        return {effectiveFrameRate: efps, tickRate: tr, dropMode:dropMode};
 
     }
 
@@ -1598,7 +1654,36 @@
 
     }
 
-    function parseTimeExpression(tickRate, effectiveFrameRate, str) {
+
+	function getDropFrameSeconds(m, effectiveFrameRate, dropMode){
+        var f = 0;
+		var hh = parseInt(m[1]);
+        f = f + hh;
+        f = f * 60;
+		var mm = parseInt(m[2]);
+        f = f + mm;
+        f = f * 60;
+        f = f + parseInt(m[3]);
+        f = f * Math.round(effectiveFrameRate);
+        f = f + (m[4] === null ? 0 : parseInt(m[4]));
+        
+		switch(dropMode){
+			case 'dropNTSC':
+				f = f - ((hh * 54 + (mm - Math.floor(mm/10))) * 2);
+				break;
+			case 'dropPAL':
+				f = f - ((hh * 27 + (Math.floor(mm/2) - Math.floor(mm/20))) * 4);
+				break;
+			default:
+				break;
+		}
+		
+		var seconds = f/effectiveFrameRate;
+        return seconds;
+	}
+
+
+    function parseTimeExpression(tickRate, effectiveFrameRate, dropMode, str) {
 
         var CLOCK_TIME_FRACTION_RE = /^(\d{2,}):(\d\d):(\d\d(?:\.\d+)?)$/;
         var CLOCK_TIME_FRAMES_RE = /^(\d{2,}):(\d\d):(\d\d)\:(\d{2,})$/;
@@ -1649,13 +1734,16 @@
         } else if ((m = CLOCK_TIME_FRAMES_RE.exec(str)) !== null) {
 
             /* this assumes that HH:MM:SS is a clock-time-with-fraction */
-
+			/* unless dropMode is set, in which case smpte values apply */
             if (effectiveFrameRate !== null) {
-
+				if (dropMode){
+					r = getDropFrameSeconds(m, effectiveFrameRate, dropMode);
+				} else {
                 r = parseInt(m[1]) * 3600 +
                         parseInt(m[2]) * 60 +
                         parseInt(m[3]) +
                         (m[4] === null ? 0 : parseInt(m[4]) / effectiveFrameRate);
+            }
             }
 
         }
@@ -1671,7 +1759,7 @@
 
         if (node && 'begin' in node.attributes) {
 
-            explicit_begin = parseTimeExpression(doc.tickRate, doc.effectiveFrameRate, node.attributes.begin.value);
+            explicit_begin = parseTimeExpression(doc.tickRate, doc.effectiveFrameRate, doc.dropMode, node.attributes.begin.value);
 
             if (explicit_begin === null) {
 
@@ -1687,7 +1775,7 @@
 
         if (node && 'dur' in node.attributes) {
 
-            explicit_dur = parseTimeExpression(doc.tickRate, doc.effectiveFrameRate, node.attributes.dur.value);
+            explicit_dur = parseTimeExpression(doc.tickRate, doc.effectiveFrameRate, doc.dropMode, node.attributes.dur.value);
 
             if (explicit_dur === null) {
 
@@ -1703,7 +1791,7 @@
 
         if (node && 'end' in node.attributes) {
 
-            explicit_end = parseTimeExpression(doc.tickRate, doc.effectiveFrameRate, node.attributes.end.value);
+            explicit_end = parseTimeExpression(doc.tickRate, doc.effectiveFrameRate, doc.dropMode, node.attributes.end.value);
 
             if (explicit_end === null) {
 

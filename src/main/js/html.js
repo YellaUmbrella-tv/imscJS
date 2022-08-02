@@ -67,6 +67,7 @@
      * @param {?module:imscUtils.ErrorHandler} errorHandler Error callback
      * @param {Object} previousISDState State saved during processing of the previous ISD, or null if initial call
      * @param {?boolean} enableRollUp Enables roll-up animations (see CEA 708)
+     * @param {?Object} options Additional options, e.g. { document: jsdom.window.document }
      * @return {Object} ISD state to be provided when this funtion is called for the next ISD
      */
 
@@ -78,7 +79,8 @@
             displayForcedOnlyMode,
             errorHandler,
             previousISDState,
-            enableRollUp
+            enableRollUp,
+            options
             ) {
 
         /* maintain aspect ratio if specified */
@@ -102,17 +104,18 @@
 
         }
 
-        var rootcontainer = document.createElement("div");
-
-        rootcontainer.style.position = "relative";
-        rootcontainer.style.width = width + "px";
-        rootcontainer.style.height = height + "px";
-        rootcontainer.style.margin = "auto";
-        rootcontainer.style.top = 0;
-        rootcontainer.style.bottom = 0;
-        rootcontainer.style.left = 0;
-        rootcontainer.style.right = 0;
-        rootcontainer.style.zIndex = 0;
+        options = options || {};
+        
+        // if no alternative dom document, use browser's one
+        if (!options.document){
+           try{
+               options.document = document;
+           } catch (e) {
+               // no document object - 
+               reportError(errorHandler, "Error no document object");
+               return;
+           }
+        }
 
         var context = {
             h: height,
@@ -120,6 +123,7 @@
             regionH: null,
             regionW: null,
             imgResolver: imgResolver,
+            document: options.document,
             displayForcedOnlyMode: displayForcedOnlyMode || false,
             isd: isd,
             errorHandler: errorHandler,
@@ -135,6 +139,18 @@
             textEmphasis: null, /* is textEmphasis present in a <p> */
             rubyReserve: null /* is rubyReserve applicable to a <p> */
         };
+        
+        var rootcontainer = context.document.createElement("div");
+
+        rootcontainer.style.position = "relative";
+        rootcontainer.style.width = width + "px";
+        rootcontainer.style.height = height + "px";
+        rootcontainer.style.margin = "auto";
+        rootcontainer.style.top = 0;
+        rootcontainer.style.bottom = 0;
+        rootcontainer.style.left = 0;
+        rootcontainer.style.right = 0;
+        rootcontainer.style.zIndex = 0;
 
         element.appendChild(rootcontainer);
 
@@ -158,20 +174,20 @@
 
         if (isd_element.kind === 'region') {
 
-            e = document.createElement("div");
+            e = context.document.createElement("div");
             e.style.position = "absolute";
 
         } else if (isd_element.kind === 'body') {
 
-            e = document.createElement("div");
+            e = context.document.createElement("div");
 
         } else if (isd_element.kind === 'div') {
 
-            e = document.createElement("div");
+            e = context.document.createElement("div");
 
         } else if (isd_element.kind === 'image') {
 
-            e = document.createElement("img");
+            e = context.document.createElement("img");
 
             if (context.imgResolver !== null && isd_element.src !== null) {
 
@@ -187,33 +203,33 @@
 
         } else if (isd_element.kind === 'p') {
 
-            e = document.createElement("p");
+            e = context.document.createElement("p");
 
         } else if (isd_element.kind === 'span') {
 
             if (isd_element.styleAttrs[imscStyles.byName.ruby.qname] === "container") {
 
-                e = document.createElement("ruby");
+                e = context.document.createElement("ruby");
 
                 context.ruby = true;
 
             } else if (isd_element.styleAttrs[imscStyles.byName.ruby.qname] === "base") {
 
-                e = document.createElement("rb");
+                e = context.document.createElement("rb");
 
             } else if (isd_element.styleAttrs[imscStyles.byName.ruby.qname] === "text") {
 
-                e = document.createElement("rt");
+                e = context.document.createElement("rt");
 
 
             } else if (isd_element.styleAttrs[imscStyles.byName.ruby.qname] === "baseContainer") {
 
-                e = document.createElement("rbc");
+                e = context.document.createElement("rbc");
 
 
             } else if (isd_element.styleAttrs[imscStyles.byName.ruby.qname] === "textContainer") {
 
-                e = document.createElement("rtc");
+                e = context.document.createElement("rtc");
 
 
             } else if (isd_element.styleAttrs[imscStyles.byName.ruby.qname] === "delimiter") {
@@ -224,7 +240,7 @@
 
             } else {
 
-                e = document.createElement("span");
+                e = context.document.createElement("span");
 
             }
 
@@ -232,7 +248,7 @@
 
         } else if (isd_element.kind === 'br') {
 
-            e = document.createElement("br");
+            e = context.document.createElement("br");
 
         }
 
@@ -356,7 +372,7 @@
 
             /* create inline block to handle multirowAlign */
 
-            var s = document.createElement("span");
+            var s = context.document.createElement("span");
 
             s.style.display = "inline-block";
 
@@ -433,7 +449,7 @@
 
                             /* wrap the character(s) in a span unless it is a high surrogate */
 
-                            var span = document.createElement("span");
+                            var span = context.document.createElement("span");
 
                             span.textContent = cbuf;
 
@@ -516,7 +532,7 @@
 
             if (context.mra) {
 
-                applyMultiRowAlign(linelist);
+                applyMultiRowAlign(linelist, context);
 
                 context.mra = null;
 
@@ -792,7 +808,7 @@
 
     }
 
-    function applyMultiRowAlign(lineList) {
+    function applyMultiRowAlign(lineList, context) {
 
         /* apply an explicit br to all but the last line */
 
@@ -801,7 +817,7 @@
             var l = lineList[i].elements.length;
 
             if (l !== 0 && lineList[i].br === false) {
-                var br = document.createElement("br");
+                var br = context.document.createElement("br");
 
                 var lastnode = lineList[i].elements[l - 1].node;
 
@@ -904,7 +920,15 @@
     function applyRubyReserve(lineList, context) {
         console.log(lineList);
         for (var i = 0; i < lineList.length; i++) {
-            var rubyover = document.createElement("ruby");
+            var ruby = context.document.createElement("ruby");
+
+            var rb = context.document.createElement("rb");
+            rb.textContent = "\u200B";
+
+            ruby.appendChild(rb);
+
+            var rt1;
+            var rt2;
             var fs = context.rubyReserve[1].toUsedLength(context.w, context.h) + "px";
 
             var rb = document.createElement("rb");
@@ -933,9 +957,27 @@
             }
 
             if (context.rubyReserve[0] === "both" || (context.rubyReserve[0] === "outside" && lineList.length == 1)) {
-              target.parentElement.insertBefore(rubyover, target);
-              target.parentElement.insertBefore(rubyunder, target);
+                rt1 = context.document.createElement("rtc");
+                rt1.style[RUBYPOSITION_PROP] = RUBYPOSITION_ISWK ? "after" : "under";
+                rt1.textContent = "\u200B";
+                rt1.style.fontSize = fs;
+
+                rt2 = context.document.createElement("rtc");
+                rt2.style[RUBYPOSITION_PROP] = RUBYPOSITION_ISWK ? "before" : "over";
+                rt2.textContent = "\u200B";
+                rt2.style.fontSize = fs;
+
+                ruby.appendChild(rt1);
+                ruby.appendChild(rt2);
+
             } else {
+
+                rt1 = context.document.createElement("rtc");
+                rt1.textContent = "\u200B";
+                rt1.style.fontSize = fs;
+
+                var pos;
+
                 if (context.rubyReserve[0] === "after" || (context.rubyReserve[0] === "outside" && i > 0)) {
                   target.parentElement.insertBefore(rubyunder, target);
                 } else {
@@ -1089,6 +1131,8 @@
             return;
 
         }
+        
+        var Node = imscHTML.Node;
 
         var curbgcolor = element.style.backgroundColor || bgcolor;
 
@@ -1169,7 +1213,7 @@
 
             while (child) {
 
-                if (child.nodeType === Node.ELEMENT_NODE) {
+                if (child.nodeType === 1) { /* was Node.ELEMENT_NODE - but only in browser */
 
                     constructLineList(context, child, llist, curbgcolor);
 
@@ -1810,16 +1854,22 @@
         STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
     }
 
-    /* CSS property names */
+    // if no browser window/document, then default, not break;
+    var RUBYPOSITION_ISWK = false;
+    var RUBYPOSITION_PROP = "rubyPosition";
+    var TEXTEMPHASISSTYLE_PROP = "textEmphasisStyle";
+    var TEXTEMPHASISPOSITION_PROP = "textEmphasisPosition";
 
-    var RUBYPOSITION_ISWK = false; //"webkitRubyPosition" in window.getComputedStyle(document.documentElement);
+    try {
+      var RUBYPOSITION_ISWK = false; //"webkitRubyPosition" in window.getComputedStyle(document.documentElement);
 
-    var RUBYPOSITION_PROP = RUBYPOSITION_ISWK ? "webkitRubyPosition" : "rubyPosition";
+      RUBYPOSITION_PROP = RUBYPOSITION_ISWK ? "webkitRubyPosition" : "rubyPosition";
 
-    var TEXTEMPHASISSTYLE_PROP = "webkitTextEmphasisStyle" in window.getComputedStyle(document.documentElement) ? "webkitTextEmphasisStyle" : "textEmphasisStyle";
+      TEXTEMPHASISSTYLE_PROP = "webkitTextEmphasisStyle" in window.getComputedStyle(document.documentElement) ? "webkitTextEmphasisStyle" : "textEmphasisStyle";
 
-    var TEXTEMPHASISPOSITION_PROP = "webkitTextEmphasisPosition" in window.getComputedStyle(document.documentElement) ? "webkitTextEmphasisPosition" : "textEmphasisPosition";
-
+      TEXTEMPHASISPOSITION_PROP = "webkitTextEmphasisPosition" in window.getComputedStyle(document.documentElement) ? "webkitTextEmphasisPosition" : "textEmphasisPosition";
+    } catch (e){
+    }
     /* error utilities */
 
     function reportError(errorHandler, msg) {
